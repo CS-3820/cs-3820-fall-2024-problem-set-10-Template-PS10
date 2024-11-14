@@ -204,6 +204,7 @@ bubble; this won't *just* be `Throw` and `Catch.
 
 -------------------------------------------------------------------------------}
 
+
 smallStep :: (Expr, Expr) -> Maybe (Expr, Expr)
 -- Constants are values, so they don't step
 smallStep (Const _, _) = Nothing
