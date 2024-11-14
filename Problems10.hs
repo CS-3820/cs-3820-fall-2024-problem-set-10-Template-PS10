@@ -213,6 +213,10 @@ smallStep (Lam _ _, _) = Nothing
 -- Arithmetic
 smallStep (Plus (Const n1) (Const n2), acc) = 
   Just (Const (n1 + n2), acc)
+smallStep (Plus (Throw m) n, acc) = 
+  Just (Throw m, acc)
+smallStep (Plus m (Throw n), acc) = 
+  Just (Throw n, acc)
 smallStep (Plus (Const n) m, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Plus (Const n) m', acc')
@@ -225,6 +229,10 @@ smallStep (Plus m n, acc) =
 -- Application
 smallStep (App (Lam x m) n, acc) | isValue n = 
   Just (subst x n m, acc)
+smallStep (App (Throw m) n, acc) = 
+  Just (Throw m, acc)
+smallStep (App m (Throw n), acc) = 
+  Just (Throw n, acc)
 smallStep (App m n, acc) | isValue m =
   case smallStep (n, acc) of
     Just (n', acc') -> Just (App m n', acc')
@@ -237,6 +245,8 @@ smallStep (App m n, acc) =
 -- Store and Recall
 smallStep (Store m, acc) | isValue m = 
   Just (m, m)
+smallStep (Store (Throw m), acc) = 
+  Just (Throw m, acc)
 smallStep (Store m, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Store m', acc')
@@ -246,24 +256,12 @@ smallStep (Recall, acc) =
 
 -- Throw
 smallStep (Throw m, acc) | isValue m = Nothing
+smallStep (Throw (Throw m), acc) = 
+  Just (Throw m, acc)
 smallStep (Throw m, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Throw m', acc')
     Nothing -> Nothing
-
--- Exception bubbling
-smallStep (Plus m n, acc) | case m of Throw _ -> True; _ -> False = 
-  Just (m, acc)
-smallStep (Plus m n, acc) | case n of Throw _ -> True; _ -> False = 
-  Just (n, acc)
-smallStep (App m n, acc) | case m of Throw _ -> True; _ -> False = 
-  Just (m, acc)
-smallStep (App m n, acc) | case n of Throw _ -> True; _ -> False = 
-  Just (n, acc)
-smallStep (Store (Throw m), acc) = 
-  Just (Throw m, acc)
-smallStep (Throw (Throw m), acc) = 
-  Just (Throw m, acc)
 
 -- Catch
 smallStep (Catch m y n, acc) | isValue m = 
