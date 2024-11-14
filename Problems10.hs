@@ -268,14 +268,16 @@ smallStep (Throw m, acc)
 
 -- Catch evaluation rules
 smallStep (Catch m y n, acc)
-  | not (isValue m) && not (Throw _ <- m) = 
+  | not (isValue m) && not (isThrow m) = 
       case smallStep (m, acc) of
         Just (m', acc') -> Just (Catch m' y n, acc')
         Nothing -> Nothing
   | isValue m = Just (m, acc)  -- If m evaluates to a value, return it
   | Throw v <- m = Just (subst y v n, acc)  -- Handle thrown exception
   | otherwise = Nothing
-
+  where
+    isThrow (Throw _) = True
+    otherwise = False
 
 
 steps :: (Expr, Expr) -> [(Expr, Expr)]
