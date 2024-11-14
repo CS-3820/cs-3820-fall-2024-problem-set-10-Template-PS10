@@ -220,9 +220,12 @@ smallStep (Plus m1 m2, acc)
                                 (Const n1, Const n2) -> Just (Const (n1 + n2), acc)
                                 _ -> Nothing
   -- Exception bubbling for Plus
-  | Throw _ <- m1 = Just (m1, acc)
-  | Throw _ <- m2 = Just (m2, acc)
+  | isThrow m1 = Just (m1, acc)
+  | isThrow m2 = Just (m2, acc)
   | otherwise = Nothing
+  where
+    isThrow (Throw _) = True
+    isThrow _ = False
 
 -- Application evaluation rules
 smallStep (App m1 m2, acc)
@@ -234,9 +237,12 @@ smallStep (App m1 m2, acc)
                          Nothing -> Nothing
   | Lam x body <- m1 = Just (subst x m2 body, acc)
   -- Exception bubbling for App
-  | Throw _ <- m1 = Just (m1, acc)
-  | Throw _ <- m2 = Just (m2, acc)
+  | isThrow m1 = Just (m1, acc)
+  | isThrow m2 = Just (m2, acc)
   | otherwise = Nothing
+  where
+    isThrow (Throw _) = True
+    isThrow _ = False
 
 -- Variable evaluation - variables should be substituted before evaluation
 smallStep (Var _, _) = Nothing
@@ -251,8 +257,11 @@ smallStep (Store m, acc)
                         Nothing -> Nothing
   | isValue m = Just (m, m)
   -- Exception bubbling for Store
-  | Throw _ <- m = Just (m, acc)
+  | isThrow m = Just (m, acc)
   | otherwise = Nothing
+  where
+    isThrow (Throw _) = True
+    isThrow _ = False
 
 -- Recall returns the accumulator
 smallStep (Recall, acc) = Just (acc, acc)
@@ -263,8 +272,11 @@ smallStep (Throw m, acc)
                         Just (m', acc') -> Just (Throw m', acc')
                         Nothing -> Nothing
   -- Exception bubbling for nested Throw
-  | Throw _ <- m = Just (m, acc)
+  | isThrow m = Just (m, acc)
   | otherwise = Nothing
+  where
+    isThrow (Throw _) = True
+    isThrow _ = False
 
 -- Catch evaluation rules
 smallStep (Catch m y n, acc)
@@ -277,7 +289,7 @@ smallStep (Catch m y n, acc)
   | otherwise = Nothing
   where
     isThrow (Throw _) = True
-    otherwise = False
+    isThrow _ = False
 
 
 steps :: (Expr, Expr) -> [(Expr, Expr)]
