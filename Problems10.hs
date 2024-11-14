@@ -277,6 +277,7 @@ smallStep (Catch m y n, acc)
   | otherwise = Nothing
 
 
+
 steps :: (Expr, Expr) -> [(Expr, Expr)]
 steps s = case smallStep s of
             Nothing -> [s]
