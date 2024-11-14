@@ -231,7 +231,7 @@ smallStep (App (Lam x m) n, acc) | isValue n =
   Just (subst x n m, acc)
 smallStep (App (Throw m) n, acc) = 
   Just (Throw m, acc)
-smallStep (App v (Throw n), acc) | isValue v = 
+smallStep (App m (Throw n), acc) = 
   Just (Throw n, acc)
 smallStep (App m n, acc) | isValue m =
   case smallStep (n, acc) of
@@ -255,8 +255,9 @@ smallStep (Recall, acc) =
   Just (acc, acc)
 
 -- Throw
-smallStep (Throw m, acc) | isValue m = 
-  Just (m, acc)  -- Changed: Throw with value just returns the value
+smallStep (Throw m, acc) | isValue m = Nothing
+smallStep (Throw (Throw m), acc) = 
+  Just (Throw m, acc)
 smallStep (Throw m, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Throw m', acc')
