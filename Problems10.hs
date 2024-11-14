@@ -217,10 +217,9 @@ smallStep (Plus (Throw m) _, acc) =
   Just (Throw m, acc)
 smallStep (Plus _ (Throw m), acc) = 
   Just (Throw m, acc)
-smallStep (Plus (Const n) m, acc) =
-  fmap (\(m', acc') -> (Plus (Const n) m', acc')) (smallStep (m, acc))
-smallStep (Plus m n, acc) =
-  fmap (\(m', acc') -> (Plus m' n, acc')) (smallStep (m, acc))
+smallStep (Plus m n, acc)
+  | isValue m = fmap (\(n', acc') -> (Plus m n', acc')) (smallStep (n, acc))
+  | otherwise = fmap (\(m', acc') -> (Plus m' n, acc')) (smallStep (m, acc))
 
 -- Application
 smallStep (App (Lam x m) n, acc) | isValue n = 
@@ -248,11 +247,11 @@ smallStep (Throw m, acc) | isValue m = Nothing
 smallStep (Throw m, acc) = fmap (\(m', acc') -> (Throw m', acc')) (smallStep (m, acc))
 
 -- Catch
-smallStep (Catch m y n, acc) 
-  | isValue m = Just (m, acc) 
+smallStep (Catch m y n, acc)
+  | isValue m = Just (m, acc)
 smallStep (Catch (Throw m) y n, acc) 
-  | isValue m = Just (subst y m n, acc) 
-smallStep (Catch m y n, acc) = 
+  | isValue m = Just (subst y m n, acc)
+smallStep (Catch m y n, acc) =
   fmap (\(m', acc') -> (Catch m' y n, acc')) (smallStep (m, acc))
 
 -- Default case
