@@ -205,46 +205,76 @@ bubble; this won't *just* be `Throw` and `Catch.
 -------------------------------------------------------------------------------}
 
 smallStep :: (Expr, Expr) -> Maybe (Expr, Expr)
--- Arithmetic operations
-smallStep (Plus (Const v1) (Const v2), acc) = Just (Const (v1 + v2), acc)
-smallStep (Plus (Const v1) e2, acc) = case smallStep (e2, acc) of
-    Just (e2', acc') -> Just (Plus (Const v1) e2', acc')
-    Nothing -> Nothing
-smallStep (Plus e1 e2, acc) = case smallStep (e1, acc) of
-    Just (e1', acc') -> Just (Plus e1' e2, acc')
-    Nothing -> Nothing
+-- Constants are values, so they don't step
+smallStep (Const _, _) = Nothing
 
--- Store operation
-smallStep (Store (Const v), _) = Just (Const v, Const v)
-smallStep (Store e, acc) = case smallStep (e, acc) of
-    Just (e', acc') -> Just (Store e', acc')
-    Nothing -> Nothing
+-- Plus evaluation rules
+smallStep (Plus m1 m2, acc)
+  | not (isValue m1) = case smallStep (m1, acc) of
+                         Just (m1', acc') -> Just (Plus m1' m2, acc')
+                         Nothing -> Nothing
+  | not (isValue m2) = case smallStep (m2, acc) of
+                         Just (m2', acc') -> Just (Plus m1 m2', acc')
+                         Nothing -> Nothing
+  | isValue m1 && isValue m2 = case (m1, m2) of
+                                (Const n1, Const n2) -> Just (Const (n1 + n2), acc)
+                                _ -> Nothing
+  -- Exception bubbling for Plus
+  | Throw _ <- m1 = Just (m1, acc)
+  | Throw _ <- m2 = Just (m2, acc)
+  | otherwise = Nothing
 
--- Recall operation
+-- Application evaluation rules
+smallStep (App m1 m2, acc)
+  | not (isValue m1) = case smallStep (m1, acc) of
+                         Just (m1', acc') -> Just (App m1' m2, acc')
+                         Nothing -> Nothing
+  | not (isValue m2) = case smallStep (m2, acc) of
+                         Just (m2', acc') -> Just (App m1 m2', acc')
+                         Nothing -> Nothing
+  | Lam x body <- m1 = Just (subst x m2 body, acc)
+  -- Exception bubbling for App
+  | Throw _ <- m1 = Just (m1, acc)
+  | Throw _ <- m2 = Just (m2, acc)
+  | otherwise = Nothing
+
+-- Variable evaluation - variables should be substituted before evaluation
+smallStep (Var _, _) = Nothing
+
+-- Lambda expressions are values
+smallStep (Lam _ _, _) = Nothing
+
+-- Store evaluation rules
+smallStep (Store m, acc)
+  | not (isValue m) = case smallStep (m, acc) of
+                        Just (m', acc') -> Just (Store m', acc')
+                        Nothing -> Nothing
+  | isValue m = Just (m, m)
+  -- Exception bubbling for Store
+  | Throw _ <- m = Just (m, acc)
+  | otherwise = Nothing
+
+-- Recall returns the accumulator
 smallStep (Recall, acc) = Just (acc, acc)
 
--- Throw operation
-smallStep (Throw (Const v), acc) = Just (Throw (Const v), acc)
-smallStep (Throw e, acc) = case smallStep (e, acc) of
-    Just (e', acc') -> Just (Throw e', acc')
-    Nothing -> Nothing
+-- Throw evaluation rules
+smallStep (Throw m, acc)
+  | not (isValue m) = case smallStep (m, acc) of
+                        Just (m', acc') -> Just (Throw m', acc')
+                        Nothing -> Nothing
+  -- Exception bubbling for nested Throw
+  | Throw _ <- m = Just (m, acc)
+  | otherwise = Nothing
 
--- Catch operation
-smallStep (Catch (Const v) _ _, acc) = Just (Const v, acc)
-smallStep (Catch (Throw (Const v)) y n, acc) = Just (subst y (Const v) n, acc)
-smallStep (Catch e y n, acc) = case smallStep (e, acc) of
-    Just (e', acc') -> Just (Catch e' y n, acc')
-    Nothing -> Nothing
-
--- Lambda calculus
-smallStep (App (Lam x e) v, acc) | isValue v = Just (subst x v e, acc)
-smallStep (App e1 e2, acc) = case smallStep (e1, acc) of
-    Just (e1', acc') -> Just (App e1' e2, acc')
-    Nothing -> case smallStep (e2, acc) of
-        Just (e2', acc') -> Just (App e1 e2', acc')
+-- Catch evaluation rules
+smallStep (Catch m y n, acc)
+  | not (isValue m) && not (Throw _ <- m) = 
+      case smallStep (m, acc) of
+        Just (m', acc') -> Just (Catch m' y n, acc')
         Nothing -> Nothing
-
-smallStep _ = Nothing
+  | isValue m = Just (m, acc)  -- If m evaluates to a value, return it
+  | Throw v <- m = Just (subst y v n, acc)  -- Handle thrown exception
+  | otherwise = Nothing
 
 
 steps :: (Expr, Expr) -> [(Expr, Expr)]
