@@ -256,12 +256,14 @@ smallStep (Recall, acc) =
 
 -- Throw
 smallStep (Throw m, acc) | isValue m = Nothing
-smallStep (Throw (Throw m), acc) = 
-  Just (Throw m, acc)
 smallStep (Throw m, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Throw m', acc')
-    Nothing -> Nothing
+    Nothing -> if isValue m
+              then Nothing
+              else case m of
+                Throw n -> Just (Throw n, acc)
+                _ -> Nothing
 
 -- Catch
 smallStep (Catch m y n, acc) | isValue m = 
