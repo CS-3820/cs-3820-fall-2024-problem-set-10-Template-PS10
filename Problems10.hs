@@ -254,7 +254,7 @@ smallStep (Store m, acc) =
 smallStep (Recall, acc) = 
   Just (acc, acc)
 
--- Throw 
+-- Throw
 smallStep (Throw m, acc) | isValue m = Nothing
 smallStep (Throw m, acc) =
   case smallStep (m, acc) of
