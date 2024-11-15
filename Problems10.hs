@@ -213,10 +213,10 @@ smallStep (Lam _ _, _) = Nothing
 -- Arithmetic
 smallStep (Plus (Const n1) (Const n2), acc) = 
   Just (Const (n1 + n2), acc)
-smallStep (Plus (Throw m) n, acc) = 
+smallStep (Plus (Throw m) _, acc) = 
   Just (Throw m, acc)
-smallStep (Plus m (Throw n), acc) = 
-  Just (Throw n, acc)
+smallStep (Plus _ (Throw m), acc) = 
+  Just (Throw m, acc)
 smallStep (Plus (Const n) m, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Plus (Const n) m', acc')
@@ -224,9 +224,7 @@ smallStep (Plus (Const n) m, acc) =
 smallStep (Plus m n, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Plus m' n, acc')
-    Nothing -> case smallStep (n, acc) of 
-                Just (n', acc') -> Just (Plus m n', acc')
-                Nothing -> Nothing
+    Nothing -> Nothing
 
 -- Application
 smallStep (App (Lam x m) n, acc) | isValue n = 
