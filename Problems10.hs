@@ -217,15 +217,18 @@ smallStep (Plus (Throw m) _, acc) =
   Just (Throw m, acc)
 smallStep (Plus _ (Throw m), acc) = 
   Just (Throw m, acc)
-smallStep (Plus (Const n) m, acc) =
+smallStep (Plus (Const n) m, acc) = 
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Plus (Const n) m', acc')
     Nothing -> Nothing
-smallStep (Plus m n, acc) =
+smallStep (Plus m n, acc) = 
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Plus m' n, acc')
-    Nothing -> Nothing
+    Nothing -> case smallStep (n, acc) of
+                 Just (n', acc') -> Just (Plus m n', acc')  -- This ensures nested expressions are reduced
+                 Nothing -> Nothing
 
+                 
 -- Application
 smallStep (App (Lam x m) n, acc) | isValue n = 
   Just (subst x n m, acc)
