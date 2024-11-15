@@ -224,7 +224,9 @@ smallStep (Plus (Const n) m, acc) =
 smallStep (Plus m n, acc) =
   case smallStep (m, acc) of
     Just (m', acc') -> Just (Plus m' n, acc')
-    Nothing -> Nothing
+    Nothing -> case smallStep (n, acc) of 
+                Just (n', acc') -> Just (Plus m n', acc')
+                Nothing -> Nothing
 
 -- Application
 smallStep (App (Lam x m) n, acc) | isValue n = 
